@@ -2,6 +2,7 @@ const express = require('express');
 const { z } = require('zod');
 const pool = require('../config/db');
 const { requireAuth, requireRole } = require('../middleware/auth');
+const triageQueue = require('../queues/triageQueue');
 
 const router = express.Router();
 router.use(requireAuth);
@@ -61,7 +62,63 @@ router.post('/', async (req, res, next) => {
       `INSERT INTO tickets (org_id, requester_id, subject, body, sla_due_at)
        VALUES (?, ?, ?, ?, DATE_ADD(NOW(), INTERVAL 4 HOUR))`,
       [req.user.orgId, req.user.id, d.subject, d.body]);
-    res.status(201).json({ id: r.insertId, status: 'open' });
+    const ticketId = r.insertId;
+
+
+let triageQueued = false;
+
+try {
+  await triageQueue.add(
+    'triage-ticket',
+    {
+      ticketId,
+      orgId: req.user.orgId,
+      subject: d.subject,
+      body: d.body
+    },
+    {
+      jobId: `triage-${ticketId}`,
+      attempts: 3,
+      backoff: {
+        type: 'exponential',
+        delay: 2000
+      },
+      removeOnComplete: 100,
+      removeOnFail: 500
+    }
+  );
+
+  triageQueued = true;
+
+  // Do not overwrite a status if the worker has already completed.
+  try {
+    await pool.execute(
+      `UPDATE tickets
+       SET triage_status = 'queued'
+       WHERE id = ?
+         AND org_id = ?
+         AND triage_status = 'pending'`,
+      [ticketId, req.user.orgId]
+    );
+  } catch (statusError) {
+    console.error(
+      `Could not update triage status for ticket ${ticketId}:`,
+      statusError.message
+    );
+  }
+} catch (queueError) {
+  console.error(
+    `Could not queue triage for ticket ${ticketId}:`,
+    queueError.message
+  );
+}
+
+
+    res.status(201).json({
+      id: ticketId,
+      status: 'open',
+      triageQueued
+    });
   } catch (err) {
     next(err);
   }

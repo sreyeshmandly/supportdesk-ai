@@ -25,10 +25,13 @@ CREATE TABLE tickets (
   status ENUM('open','pending','resolved','closed') DEFAULT 'open',
   priority ENUM('low','medium','high','urgent') NULL,
   category VARCHAR(80) NULL,
+  triage_status ENUM('pending', 'queued', 'completed', 'failed', 'skipped')
+  NOT NULL DEFAULT 'pending',
   sla_due_at DATETIME NULL,
   first_response_at DATETIME NULL,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   INDEX idx_org_status (org_id, status),
+  INDEX idx_triage_recovery (triage_status, id),
   FOREIGN KEY (org_id) REFERENCES organizations(id),
   FOREIGN KEY (requester_id) REFERENCES users(id),
   FOREIGN KEY (assignee_id) REFERENCES users(id)

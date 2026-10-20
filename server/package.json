@@ -5,13 +5,15 @@
   "main": "index.js",
   "scripts": {
     "test": "jest --runInBand",
-    "dev": "nodemon src/server.js"
+    "dev": "nodemon src/server.js",
+    "worker": "node src/workers/triageWorker.js"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "type": "commonjs",
   "dependencies": {
+    "@google/genai": "^2.30.0",
     "bcryptjs": "^3.0.3",
     "bullmq": "^6.3.11",
     "cors": "^2.8.6",
