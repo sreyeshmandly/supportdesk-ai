@@ -57,11 +57,21 @@ beforeAll(async () => {
       'ai_suggestions',
       'ticket_messages',
       'tickets',
+      'kb_article_chunks',
       'kb_articles',
       'users',
       'organizations'
     ]) {
-      await conn.query(`TRUNCATE TABLE ${t}`);
+      const [tableRows] = await conn.query(
+        `SELECT COUNT(*) AS tableCount
+         FROM information_schema.tables
+         WHERE table_schema = DATABASE() AND table_name = ?`,
+        [t]
+      );
+
+      if (Number(tableRows[0].tableCount) > 0) {
+        await conn.query(`TRUNCATE TABLE ${t}`);
+      }
     }
 
     await conn.query('SET FOREIGN_KEY_CHECKS = 1');

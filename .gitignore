@@ -5,3 +5,37 @@ __pycache__/
 ai-service/model/
 *.log
 dist/
+
+# Local test credentials and private notes
+server/Rag test example email and password.txt
+server/supportdeskAi Note Pad.txt
+
+# Local inspection artifacts
+server/inspect-rag-migration.tmp.cjs
+server/inspect-rag-schema.cjs
+server/inspect-supportdesk.ps1
+rag-inspection-report.txt
+rag-next-inspection.txt
+triage-review-bundle.txt
+triage-review-parts/
+# Deployment safety: local backups and temporary artifacts
+backups/
+*.backup*
+*.bak
+*.sql.bak
+.gitignore.backup-*
+.gitignore.before-deployment-*.bak
+
+# Local development utilities; review individually before publishing
+server/inspect-*.cjs
+server/inspect-*.ps1
+server/testGemini.js
+server/testTriage.js
+server/testServices.js
+
+# Local investigation reports and review bundles
+
+# Legacy development utilities
+server/src/listModels.js
+server/src/testServices.js
+server/src/testTriage.js
