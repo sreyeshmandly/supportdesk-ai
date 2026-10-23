@@ -96,6 +96,111 @@ describe('RAG retrieval', () => {
     expect(result[0].similarity).toBeCloseTo(1);
   });
 
+  test("scopes retrieval to the requested organization and published articles", async () => {
+    pool.execute.mockResolvedValue([[]]);
+
+    const result = await retrieveRelevantChunks({
+      orgId: 7,
+      question: "What is the private policy?"
+    });
+
+    expect(result).toEqual([]);
+
+    const [sql, params] = pool.execute.mock.calls[0];
+
+    expect(sql).toContain("WHERE c.org_id = ?");
+    expect(sql).toContain("AND a.org_id = ?");
+    expect(sql).toContain("AND a.status = 'published'");
+    expect(sql).toContain("AND a.org_id = c.org_id");
+    expect(params).toEqual([7, 7, expect.any(Number)]);
+  });
+
+  test('ignores malformed database embeddings', async () => {
+    pool.execute.mockResolvedValue([
+      [
+        {
+          article_id: 12,
+          chunk_index: 0,
+          chunk_text: 'Malformed embedding.',
+          embedding: 'not-json',
+          title: 'Invalid Article'
+        },
+        {
+          article_id: 13,
+          chunk_index: 0,
+          chunk_text: 'Wrong embedding dimensions.',
+          embedding: JSON.stringify([1, 2, 3]),
+          title: 'Invalid Dimensions'
+        }
+      ]
+    ]);
+
+    const result = await retrieveRelevantChunks({
+      orgId: 7,
+      question: 'What does the article say?'
+    });
+
+    expect(result).toEqual([]);
+  });
+
+  test('returns no matches when the query embedding is a zero vector', async () => {
+    embedQuery.mockResolvedValue(Array(768).fill(0));
+
+    pool.execute.mockResolvedValue([
+      [
+        {
+          article_id: 14,
+          chunk_index: 0,
+          chunk_text: 'A published policy.',
+          embedding: JSON.stringify(vector(1)),
+          title: 'Published Policy'
+        }
+      ]
+    ]);
+
+    const result = await retrieveRelevantChunks({
+      orgId: 7,
+      question: 'What does the policy say?'
+    });
+
+    expect(result).toEqual([]);
+  });
+
+  test('returns no more than the requested topK chunks', async () => {
+    pool.execute.mockResolvedValue([
+      [
+        {
+          article_id: 15,
+          chunk_index: 0,
+          chunk_text: 'Policy chunk one.',
+          embedding: JSON.stringify(vector(1)),
+          title: 'Policy One'
+        },
+        {
+          article_id: 16,
+          chunk_index: 0,
+          chunk_text: 'Policy chunk two.',
+          embedding: JSON.stringify(vector(1)),
+          title: 'Policy Two'
+        },
+        {
+          article_id: 17,
+          chunk_index: 0,
+          chunk_text: 'Policy chunk three.',
+          embedding: JSON.stringify(vector(1)),
+          title: 'Policy Three'
+        }
+      ]
+    ]);
+
+    const result = await retrieveRelevantChunks({
+      orgId: 7,
+      question: 'What does the policy say?',
+      topK: 2
+    });
+
+    expect(result).toHaveLength(2);
+  });
   test('does not return irrelevant chunks', async () => {
     pool.execute.mockResolvedValue([
       [
