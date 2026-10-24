@@ -107,6 +107,156 @@ The ticket detail screen shows ticket information, status, and the conversation.
 
 ![SupportDesk AI Pro ticket details](docs/screenshots/05-ticket-details.png)
 
+
+
+
+
+
+### 6. AI Ticket Triage
+
+SupportDesk AI Pro uses Google Gemini to classify support tickets asynchronously. BullMQ and Redis handle background processing, allowing tickets to be created without waiting for AI classification to finish.
+
+**Features**
+- AI-powered ticket categorization.
+- Priority and sentiment classification.
+- Confidence score generation.
+- Background processing using BullMQ and Redis.
+- Automatic retries for failed jobs.
+- Storage of triage results in MySQL.
+
+![SupportDesk AI Pro AI Ticket Triage](docs/screenshots/06-ai-triage.png)
+
+### 7. Knowledge Base
+
+The Knowledge Base provides a shared source of trusted information for support staff and the AI assistant.
+
+**Features**
+- Create and edit knowledge-base articles.
+- Save articles as drafts before publication.
+- Publish articles to make them available to the AI assistant.
+- Generate embeddings using the existing Gemini embedding workflow.
+- Store article chunks and embeddings in MySQL.
+- View article publication and indexing status.
+- Ask questions grounded in published knowledge-base content.
+
+![SupportDesk AI Pro Knowledge Base](docs/screenshots/07-knowledge-base.png)
+
+#### How the Knowledge Base Works
+
+1. Create a knowledge-base article.
+2. Review and update the content.
+3. Publish the article when it is ready.
+4. The published content becomes available to the RAG retrieval workflow.
+
+Only published articles are intended to provide knowledge for the AI assistant. Drafts remain available to authorized staff for editing.
+
+### 8. AI Knowledge Assistant — Grounded AI Workspace
+
+The AI Knowledge Assistant uses Retrieval-Augmented Generation (RAG) to answer questions using relevant published knowledge-base articles.
+
+**Features**
+- Ask questions about support policies, processes, and workflows.
+- Retrieve relevant content from published knowledge-base articles.
+- Restrict retrieval to the authenticated user's organization.
+- Generate answers using retrieved content as context.
+- Return source references when relevant knowledge is available.
+- View recent questions during the current page session.
+
+![SupportDesk AI Pro Grounded AI Assistant](docs/screenshots/08-rag-answer.png)
+
+#### How RAG Works
+
+**01 — Search Your Knowledge**
+
+The backend retrieves relevant chunks from published articles belonging to the user's organization.
+
+**02 — Generate a Grounded Response**
+
+Google Gemini receives the question and retrieved context to generate an answer based on the available knowledge.
+
+**03 — Review the Sources**
+
+Users can review the referenced source articles and determine whether the answer supports their intended decision.
+
+#### Example Questions
+
+- What is the refund verification process?
+- How long does an approved refund take?
+- What should I include when escalating a support issue?
+
+> AI-generated answers may be incomplete or incorrect. Verify important decisions against official policies, especially when the published knowledge base does not contain sufficient information.
+
+### 9. Team Members
+
+The Team Members page provides workspace administration for managing organization membership and support-team access.
+
+**Features**
+- View organization members.
+- Review member roles.
+- View account information.
+- Add members through the workspace administration interface.
+- Support administrator and agent roles.
+
+![SupportDesk AI Pro Team Members](docs/screenshots/10-team-members.png)
+
+#### Workspace Roles
+
+- **Admin:** Workspace administration.
+- **Agent:** Support-team access for handling support responsibilities.
+
+Member visibility and available actions depend on the authenticated user's permissions.
+
+> Before publishing the screenshot, hide personal email addresses and any other information you do not want publicly visible.
+
+### 10. Automated Test Results
+
+Automated backend tests and a frontend production build help verify the application during development.
+
+The latest recorded development verification on October 23, 2026, reported:
+
+- **7 backend test suites passed**
+- **72 backend tests passed**
+- **Vite production build passed**
+- **1,665 frontend modules transformed**
+
+![SupportDesk AI Pro Test Results](docs/screenshots/09-test-results.png)
+
+These results describe a previous development run. Run the tests again after making code changes to verify the current version.
+
+---
+
+## 🏗️ Architecture
+
+```mermaid
+flowchart TD
+    U[User / Browser] --> FE[React + Vite Client]
+    FE -->|HTTP REST + JWT| API[Express API]
+    API --> AUTH[Authentication and Authorization]
+    AUTH --> DB[(MySQL)]
+
+    API -->|Enqueue triage job| Q[BullMQ + Redis]
+    Q --> W[AI Triage Worker]
+    W --> GEM[Google Gemini]
+    W --> DB
+
+    FE -->|Knowledge question| API
+    API --> EMB[Gemini Embeddings]
+    EMB --> RET[MySQL RAG Retrieval]
+    RET -->|Published organization-scoped chunks| LLM[Gemini Answer Generation]
+    LLM --> API
+    API -->|Answer and source metadata| FE
+
+
+
+
+
+
+
+
+
+
+
+
 ### 6. AI triage result
 
 After the background worker processes the queued job, the ticket should reflect its saved category, priority, and triage status.
